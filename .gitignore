@@ -1,3 +1,7 @@
+# Byte-compiled / optimized / DLL files
+*.DS_store
+*.zip
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -8,3 +12,13 @@ wheels/
 
 # Virtual environments
 .venv
+
+# PyCharm
+.idea
+
+# VScode
+.vscode
+
+# Scratch files
+scratch.*
+index_formated.html

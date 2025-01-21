@@ -4,4 +4,9 @@ version = "0.1.0"
 description = "HackerNews scraper for specific keywords"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "flask>=3.1.0",
+    "pymongo>=4.10.1",
+    "requests>=2.32.3",
+]

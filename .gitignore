@@ -22,3 +22,6 @@ wheels/
 # Scratch files
 scratch.*
 index_formated.html
+
+# Environment variables
+.env

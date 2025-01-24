@@ -130,7 +130,7 @@ def parse_pages(websites: list[str]) -> dict:
 if __name__ == "__main__":
     test_output = parse_pages(WEBSITES)
     # print(test_output)
-    print(json.dumps(test_output, indent=4))
+    # print(json.dumps(test_output, indent=4))
 
 
 

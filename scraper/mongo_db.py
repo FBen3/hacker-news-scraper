@@ -39,13 +39,14 @@ def get_original_save_date(title):
 
 def insert_data(data, duplicates=None):
     """Only insert articles not already scraped"""
-    de_dupped_articles = []
     update_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
     db = connect_database()
     collection = db[COLLECTION_NAME]
 
     if duplicates:
+        de_dupped_articles = []
+
         for article in data["saves"]:
             title = article["title"]
             if title in duplicates:
@@ -64,8 +65,9 @@ def insert_data(data, duplicates=None):
                 de_dupped_articles.append(article)
 
         data["saves"] = de_dupped_articles
-  
+
     collection.insert_one(data)
+    # should I log a message if empty? Or if only an update happened?
 
 
 def fetch_duplicates(data, date):
@@ -78,12 +80,12 @@ def fetch_duplicates(data, date):
 
     pipeline = [
         {"$match": {"scrape_date": {"$regex": f"^{date}"}}},  # match documents for a specific date
-        {"$unwid": "$saves"},  # unwind saved articles
+        {"$unwind": "$saves"},  # unwind saved articles
         {"$project": {"_id": 0, "title": "$saves.title"}}  # filter for only the title field
     ]
     result = collection.aggregate(pipeline)
 
-    past_titles = [article["title"] for article in result]
+    past_titles = {article["title"] for article in result}
     duplicates = current_titles & past_titles
 
     return duplicates
@@ -110,35 +112,10 @@ def save_scraped_data(data):
 
     else:
         insert_data(data)
-   
 
 
 if __name__ == "__main__":
-    sample_data = {
-        "scrape_date": "2024-08-29T17:51:54",
-        "saves": [
-            {
-                "matched_keywords": ["BCI"],
-                "title": "Something BCI",
-                "points": 412,
-                "post_date": "2024-08-29T17:51:54",
-                "url": "https://blog.kagi.com/dawn-new-era-search",
-                "number_of_comments": 6
-            },
-            {
-                "matched_keywords": ["Neuro"],
-                "title": "Something Neuro",
-                "points": 412,
-                "post_date": "2024-08-29T17:51:54",
-                "url": "https://blog.kagi.com/dawn-new-era-search",
-                "number_of_comments": 6
-            }
-        ]
-    }
-    save_scraped_data(sample_data)
-
-
-
-
-
-
+    sample_data_1 = {}
+    save_scraped_data(sample_data_1)
+    # save_scraped_data(sample_data_2)
+    # save_scraped_data(sample_data_3)

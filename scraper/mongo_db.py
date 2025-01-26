@@ -5,6 +5,7 @@ for intereacting with the database go in here.
 
 """
 from datetime import datetime
+import json
 
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
@@ -24,6 +25,25 @@ def connect_database():
     # client.close() ???
 
 
+def fetch_all_saved_articles(date=None):
+    """Get every saved article in the database; filter by date if provided"""
+    db = connect_database()
+    collection = db[COLLECTION_NAME]
+
+    pipeline = []  # initialize pipeline
+    if date:
+        pipeline.append(
+            {"$match": {"scrape_date": {"$regex": f"^{date}"}}}  # match documents with a date if present
+        )
+    pipeline.append({"$unwind": "$saves"})  # unwind the saves array
+    pipeline.append({"$replaceRoot": {"newRoot": "$saves"}})  # project only article detials
+
+    result = collection.aggregate(pipeline)
+    all_articles = list(result)
+
+    return json.dumps(all_articles, indent=4)
+
+
 def get_original_save_date(title):
     """Get the original scrape date of an article"""
     db = connect_database()
@@ -38,7 +58,7 @@ def get_original_save_date(title):
 
 
 def insert_data(data, duplicates=None):
-    """Only insert articles not already scraped"""
+    """Insert new articles; update saved ones"""
     update_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
     db = connect_database()
@@ -116,6 +136,7 @@ def save_scraped_data(data):
 
 if __name__ == "__main__":
     sample_data_1 = {}
-    save_scraped_data(sample_data_1)
+    # save_scraped_data(sample_data_1)
     # save_scraped_data(sample_data_2)
     # save_scraped_data(sample_data_3)
+    print(fetch_all_saved_articles())

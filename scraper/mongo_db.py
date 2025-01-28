@@ -4,6 +4,7 @@ The database connection code and helper functions
 for intereacting with the database go in here. 
 
 """
+from contextlib import contextmanager
 from datetime import datetime
 import json
 
@@ -17,31 +18,33 @@ from config import (
 )
 
 
+@contextmanager
 def connect_database():
-    """Establish connection to MongoDB and return the database object"""
+    """Create a context manager for database connections"""
     client = MongoClient(MONGO_ATLAS_URI, server_api=ServerApi('1'))
 
-    return client[DATABASE_NAME]
-    # client.close() ???
+    try:
+        yield client[DATABASE_NAME]
+    finally:
+        client.close()
 
 
-def fetch_all_saved_articles(date=None):
-    """Get every saved article in the database; filter by date if provided"""
-    db = connect_database()
-    collection = db[COLLECTION_NAME]
+def fetch_saved_articles(date=None):
+    """Get every saved article by default; filter by date if provided"""
+    with connect_database() as db:
+        collection = db[COLLECTION_NAME]
 
-    pipeline = []  # initialize pipeline
-    if date:
-        pipeline.append(
-            {"$match": {"scrape_date": {"$regex": f"^{date}"}}}  # match documents with a date if present
-        )
-    pipeline.append({"$unwind": "$saves"})  # unwind the saves array
-    pipeline.append({"$replaceRoot": {"newRoot": "$saves"}})  # project only article detials
+        pipeline = []  # initialize pipeline
+        if date:
+            pipeline.append(
+                {"$match": {"scrape_date": {"$regex": f"^{date}"}}}  # match documents with a date if present
+            )
+        pipeline.append({"$unwind": "$saves"})  # unwind the saves array
+        pipeline.append({"$replaceRoot": {"newRoot": "$saves"}})  # project only article detials
 
-    result = collection.aggregate(pipeline)
-    all_articles = list(result)
+        all_articles = list(collection.aggregate(pipeline))
 
-    return json.dumps(all_articles, indent=4)
+        return json.dumps(all_articles, indent=4)
 
 
 def get_original_save_date(title):
@@ -57,58 +60,62 @@ def get_original_save_date(title):
     return original_document["scrape_date"]
 
 
+def update_existing_article(article, title, original_date, update_date, collection):
+    """Helper function to update existing article metadata"""
+    collection.update_one(
+        {"scrape_date": original_date, "saves.title": title},
+        {
+            "$set": {
+                "saves.$.points": article["points"],
+                "saves.$.comments": article["number_of_comments"],
+                "saves.$.updated_at": update_date                 
+            }
+        }
+    )
+
+
 def insert_data(data, duplicates=None):
     """Insert new articles; update saved ones"""
     update_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
-    db = connect_database()
-    collection = db[COLLECTION_NAME]
+    with connect_database() as db:    
+        collection = db[COLLECTION_NAME]
 
-    if duplicates:
-        de_dupped_articles = []
+        if duplicates:
+            de_dupped_articles = [
+                article for article in data["saves"] if article["title"] not in duplicates
+            ]
 
-        for article in data["saves"]:
-            title = article["title"]
-            if title in duplicates:
-                original_date = get_original_save_date(title=title)
-                collection.update_one(
-                    {"scrape_date": original_date, "saves.title": title},
-                    {
-                        "$set": {
-                            "saves.$.points": article["points"],
-                            "saves.$.comments": article["number_of_comments"],
-                            "saves.$.updated_at": update_date                 
-                        }
-                    }
-                )
-            else:
-                de_dupped_articles.append(article)
+            for article in data["saves"]:
+                title = article["title"]
+                if article["title"] in duplicates:
+                    original_date = get_original_save_date(title=title)
+                    update_existing_article(article, title, original_date, update_date, collection)
 
-        data["saves"] = de_dupped_articles
+            data["saves"] = de_dupped_articles
 
-    collection.insert_one(data)
-    # should I log a message if empty? Or if only an update happened?
+        collection.insert_one(data)
+        # should I log a message if empty? Or if only an update happened?
 
 
-def fetch_duplicates(data, date):
+def fetch_duplicate_titles(data, date):
     """Return articles already in the database"""
     current_titles = {article["title"] for article in data["saves"]}
 
-    # get titles of all the ones already in db
-    db = connect_database()
-    collection = db[COLLECTION_NAME]
+    with connect_database() as db:
+        collection = db[COLLECTION_NAME]
 
-    pipeline = [
-        {"$match": {"scrape_date": {"$regex": f"^{date}"}}},  # match documents for a specific date
-        {"$unwind": "$saves"},  # unwind saved articles
-        {"$project": {"_id": 0, "title": "$saves.title"}}  # filter for only the title field
-    ]
-    result = collection.aggregate(pipeline)
+        pipeline = [
+            {"$match": {"scrape_date": {"$regex": f"^{date}"}}},  # match documents for a specific date
+            {"$unwind": "$saves"},  # unwind saved articles
+            {"$project": {"_id": 0, "title": "$saves.title"}}  # filter for only the title field
+        ]
+        result = collection.aggregate(pipeline)
 
-    past_titles = {article["title"] for article in result}
-    duplicates = current_titles & past_titles
+        past_titles = {article["title"] for article in result}
+        duplicates = current_titles & past_titles
 
-    return duplicates
+        return duplicates
 
 
 def save_scraped_data(data):
@@ -117,26 +124,26 @@ def save_scraped_data(data):
         print("No data to insert. Try again.")
         return
     
-    db = connect_database()
-    collection = db[COLLECTION_NAME]
+    with connect_database() as db:
+        collection = db[COLLECTION_NAME]
 
-    # check if database is empty for that day
-    # IF non-empty -> check for duplicates
-    # ELSE -> insert data right away
-    today = datetime.now().strftime('%Y-%m-%d')
-    query = {"scrape_date": {"$regex": f"^{today}"}}
+        # check if database is empty for that day
+        # IF non-empty -> check for duplicates
+        # ELSE -> insert data right away
+        today = datetime.now().strftime('%Y-%m-%d')
+        query = {"scrape_date": {"$regex": f"^{today}"}}
 
-    if collection.count_documents(query) > 0:
-        duplicates = fetch_duplicates(data, today)
-        insert_data(data, duplicates)
+        if collection.count_documents(query) > 0:
+            duplicates = fetch_duplicate_titles(data, today)
+            insert_data(data, duplicates)
 
-    else:
-        insert_data(data)
+        else:
+            insert_data(data)
 
 
 if __name__ == "__main__":
     sample_data_1 = {}
-    # save_scraped_data(sample_data_1)
+    save_scraped_data(sample_data_1)
     # save_scraped_data(sample_data_2)
     # save_scraped_data(sample_data_3)
-    print(fetch_all_saved_articles())
+    # print(fetch_all_saved_articles())

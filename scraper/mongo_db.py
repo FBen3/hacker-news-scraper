@@ -6,6 +6,7 @@ for intereacting with the database go in here.
 """
 from contextlib import contextmanager
 from datetime import datetime
+import logging
 import json
 
 from pymongo import MongoClient
@@ -16,6 +17,14 @@ from config import (
     DATABASE_NAME,
     COLLECTION_NAME
 )
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -49,15 +58,15 @@ def fetch_saved_articles(date=None):
 
 def get_original_save_date(title):
     """Get the original scrape date of an article"""
-    db = connect_database()
-    collection = db[COLLECTION_NAME]
+    with connect_database() as db:
+        collection = db[COLLECTION_NAME]
 
-    original_document = collection.find_one(
-        {"saves.title": title},  # query
-        {"scrape_date": 1, "_id": 0}  # projection
-    )
+        original_document = collection.find_one(
+            {"saves.title": title},  # query
+            {"scrape_date": 1, "_id": 0}  # projection
+        )
 
-    return original_document["scrape_date"]
+        return original_document["scrape_date"]
 
 
 def update_existing_article(article, title, original_date, update_date, collection):
@@ -93,9 +102,10 @@ def insert_data(data, duplicates=None):
                     update_existing_article(article, title, original_date, update_date, collection)
 
             data["saves"] = de_dupped_articles
+            logger.info(f"Updated {len(duplicates)} existing articles in database")
 
         collection.insert_one(data)
-        # should I log a message if empty? Or if only an update happened?
+        logger.info(f"Inserted {len(data["saves"])} new articles in database")
 
 
 def fetch_duplicate_titles(data, date):
@@ -121,14 +131,14 @@ def fetch_duplicate_titles(data, date):
 def save_scraped_data(data):
     """Save scraped data into collection"""
     if not data:
-        print("No data to insert. Try again.")
+        logger.warning("No scrape data to insert. Skipping database.")
         return
     
     with connect_database() as db:
         collection = db[COLLECTION_NAME]
 
         # check if database is empty for that day
-        # IF non-empty -> check for duplicates
+        # IF not empty -> check for duplicates
         # ELSE -> insert data right away
         today = datetime.now().strftime('%Y-%m-%d')
         query = {"scrape_date": {"$regex": f"^{today}"}}
@@ -136,9 +146,10 @@ def save_scraped_data(data):
         if collection.count_documents(query) > 0:
             duplicates = fetch_duplicate_titles(data, today)
             insert_data(data, duplicates)
-
+            logger.info(f"Scraped data for {today}. {len(duplicates)} duplicates found.")
         else:
             insert_data(data)
+            logger.info(f"Scraped data for {today}")
 
 
 if __name__ == "__main__":

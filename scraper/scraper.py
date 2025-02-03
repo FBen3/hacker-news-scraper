@@ -8,22 +8,15 @@ for the presence of specied keywords.
 from datetime import datetime
 import json
 import re
+import logging
 
 from bs4 import BeautifulSoup
 import requests
 
+from config import WEBSITES, KEYWORDS
 
-WEBSITES = [
-    "https://news.ycombinator.com",
-    "https://news.ycombinator.com/?p=2"
-]
 
-KEYWORDS = [
-    "zork",
-    "WAR",
-    "BCI",
-    "neuro"
-]
+logger = logging.getLogger(__name__)
 
 
 def fetch_website(url: str) -> BeautifulSoup:

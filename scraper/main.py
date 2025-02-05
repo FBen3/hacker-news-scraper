@@ -1,6 +1,8 @@
 import logging
+import json
 
 from scraper import parse_pages
+from mongo_db import save_scraped_data
 from config import WEBSITES
 
 
@@ -11,7 +13,8 @@ logging.basicConfig(
 
 
 def main():
-    parse_pages(WEBSITES)
+    data = parse_pages(WEBSITES)
+    save_scraped_data(data)
 
 
 if __name__ == "__main__":

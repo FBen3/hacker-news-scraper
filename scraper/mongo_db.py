@@ -13,7 +13,7 @@ from typing import List
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, ValidationError
 
 from config import (
     MONGO_ATLAS_URI,
@@ -182,10 +182,19 @@ def fetch_duplicate_titles(data, date):
 
 
 def save_scraped_data(data):
-    """Save scraped data into collection"""
+    """Save scraped data into collection after validation"""
     if not data:
         logger.warning("No scrape data to insert. Skipping database.")
         return
+
+    try:
+        valid_data = Data.model_validate(data)
+
+    except ValidationError as e:
+        logger.error(f"[From Pydantic] Invalid scraped data format")
+        return
+
+    logger.info("Scrape data validation successful.")
     
     try:
         with connect_database() as db:
@@ -201,8 +210,8 @@ def save_scraped_data(data):
             query = {"scrape_date": {"$regex": f"^{today}"}}
 
             if collection.count_documents(query) > 0:
-                duplicates = fetch_duplicate_titles(data, today)
-                insert_data(data, duplicates)
+                duplicates = fetch_duplicate_titles(valid_data.model_dump(), today)
+                insert_data(valid_data.model_dump(), duplicates)
                 logger.info(f"Scraped data for {today}. {len(duplicates)} duplicates found.")
             else:
                 insert_data(data)

@@ -8,10 +8,12 @@ from contextlib import contextmanager
 from datetime import datetime
 import logging
 import json
+from typing import List
 
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
+from pydantic import BaseModel, HttpUrl
 
 from config import (
     MONGO_ATLAS_URI,
@@ -21,6 +23,22 @@ from config import (
 
 
 logger = logging.getLogger(__name__)
+
+
+# Article model
+class ScrapeData(BaseModel):
+    matched_keywords: List[str]
+    title: str
+    points: int
+    post_date: str
+    url: HttpUrl
+    number_of_comments: int 
+
+
+# Scrape Data model
+class Data(BaseModel):
+    scrape_date: str
+    saves: List[ScrapeData]
 
 
 @contextmanager

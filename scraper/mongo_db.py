@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # Article model
-class ScrapeData(BaseModel):
+class ArticleRecord(BaseModel):
     matched_keywords: List[str]
     title: str
     points: int
@@ -36,9 +36,9 @@ class ScrapeData(BaseModel):
 
 
 # Scrape Data model
-class Data(BaseModel):
+class ScrapeResult(BaseModel):
     scrape_date: str
-    saves: List[ScrapeData]
+    saves: List[ArticleRecord] = []
 
 
 @contextmanager
@@ -50,7 +50,7 @@ def connect_database():
         yield client[DATABASE_NAME]
 
     except Exception as e:
-        logger.error(f"[From MongoDB] Failed to connect to database: {e}")
+        logger.error(f"[MongoDB] Failed to connect to database: {e}")
         yield None  # returning None so callers can handle the failure (instead of program crashing)
 
     finally:
@@ -79,7 +79,7 @@ def fetch_saved_articles(date=None):
             return json.dumps(all_articles, indent=4)
         
     except PyMongoError as e:
-        logger.error(f"[From MongoDB] Failed to fetch saved articles: {e}")
+        logger.error(f"[MongoDB] Failed to fetch saved articles: {e}")
         return json.dumps({"error": "Database query failed for some reason!"})
 
 
@@ -98,13 +98,13 @@ def get_original_save_date(title):
             )
 
             if not original_document:
-                logger.warning(f"[From MongoDB] No original save date found for: {title}")
+                logger.warning(f"[MongoDB] No original save date found for: {title}")
                 return None
 
             return original_document["scrape_date"]
         
     except PyMongoError as e:
-        logger.error(f"[From MongoDB] Failed to get original scrape date for: {title}. Error {e}")
+        logger.error(f"[MongoDB] Failed to get original scrape date for: {title}. Error {e}")
         return None
 
 
@@ -151,7 +151,7 @@ def insert_data(data, duplicates=None):
             logger.info(f"Inserted {len(data["saves"])} new articles in database")
 
     except PyMongoError as e:
-        logger.error(f"[From MongoDB] Failed to insert/update data: {e}")
+        logger.error(f"[MongoDB] Failed to insert/update data: {e}")
 
 
 def fetch_duplicate_titles(data, date):
@@ -177,26 +177,16 @@ def fetch_duplicate_titles(data, date):
             return current_titles & past_titles
         
     except PyMongoError as e:
-        logger.error(f"[From MongoDB] Failed to fetch duplicate titles: {e}")
+        logger.error(f"[MongoDB] Failed to fetch duplicate titles: {e}")
         return set()
 
 
 def save_scraped_data(data):
     """Save scraped data into collection after validation"""
-    if not data:
-        logger.warning("No scrape data to insert. Skipping database.")
-        return
-
     try:
-        valid_data = Data.model_validate(data)
+        valid_data = ArticleRecord.model_validate(data)
+        logger.info("Scrape data validation successful.")
 
-    except ValidationError as e:
-        logger.error(f"[From Pydantic] Invalid scraped data format")
-        return
-
-    logger.info("Scrape data validation successful.")
-    
-    try:
         with connect_database() as db:
             if db is None:
                 return
@@ -214,8 +204,11 @@ def save_scraped_data(data):
                 insert_data(valid_data.model_dump(), duplicates)
                 logger.info(f"Scraped data for {today}. {len(duplicates)} duplicates found.")
             else:
-                insert_data(data)
+                insert_data(valid_data.model_dump())
                 logger.info(f"Scraped data for {today}")
+
+    except ValidationError as e:
+        logger.error(f"[Pydantic] Invalid scraped data format: {e}")
 
     except PyMongoError as e:
         logger.error(f"[From MongoDB] Failed to save scraped data: {e}")

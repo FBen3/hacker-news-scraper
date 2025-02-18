@@ -107,7 +107,7 @@ def check_titles(parsed_site: BeautifulSoup) -> list:
 
 def parse_pages(websites: list[str]) -> dict:
     scrape_results = {
-        "scrape_date": datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        "scrape_date": datetime.now(),
         "saves": []
     }
 

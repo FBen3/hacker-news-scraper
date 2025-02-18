@@ -5,7 +5,7 @@ for intereacting with the database go in here.
 
 """
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import json
 from typing import List
@@ -30,14 +30,14 @@ class ArticleRecord(BaseModel):
     matched_keywords: List[str]
     title: str
     points: int
-    post_date: str
-    url: HttpUrl
-    number_of_comments: int 
+    post_date: datetime
+    url: str
+    number_of_comments: int | None
 
 
 # Scrape Data model
 class ScrapeResult(BaseModel):
-    scrape_date: str
+    scrape_date: datetime
     saves: List[ArticleRecord] = []
 
 
@@ -68,8 +68,11 @@ def fetch_saved_articles(date=None):
 
             pipeline = []  # initialize pipeline
             if date:
+                start_of_day = datetime(date.year, date.month, date.day)  # mindnight
+                end_of_day = start_of_day + timedelta(days=1)  # next midnight
+
                 pipeline.append(
-                    {"$match": {"scrape_date": {"$regex": f"^{date}"}}}  # match documents with a date if present
+                    {"$match": {"scrape_date": {"$gte": start_of_day, "$lt": end_of_day}}}
                 )
             pipeline.append({"$unwind": "$saves"})  # unwind the saves array
             pipeline.append({"$replaceRoot": {"newRoot": "$saves"}})  # project only article detials
@@ -124,7 +127,7 @@ def update_existing_article(article, title, original_date, update_date, collecti
 
 def insert_data(data, duplicates=None):
     """Insert new articles; update saved ones"""
-    update_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    update_date = datetime.now()
 
     try:
         with connect_database() as db:    
@@ -165,8 +168,11 @@ def fetch_duplicate_titles(data, date):
 
             collection = db[COLLECTION_NAME]
 
+            start_of_day = datetime(date.year, date.month, date.day)
+            end_of_day = start_of_day + timedelta(days=1)
+
             pipeline = [
-                {"$match": {"scrape_date": {"$regex": f"^{date}"}}},  # match documents for a specific date
+                {"$match": {"scrape_date": {"$gte": start_of_day, "$lt": end_of_day}}},  # match documents for a specific date
                 {"$unwind": "$saves"},  # unwind saved articles
                 {"$project": {"_id": 0, "title": "$saves.title"}}  # filter for only the title field
             ]
@@ -184,7 +190,7 @@ def fetch_duplicate_titles(data, date):
 def save_scraped_data(data):
     """Save scraped data into collection after validation"""
     try:
-        valid_data = ArticleRecord.model_validate(data)
+        valid_data = ScrapeResult.model_validate(data)
         logger.info("Scrape data validation successful.")
 
         with connect_database() as db:
@@ -196,16 +202,19 @@ def save_scraped_data(data):
             # check if database is empty for that day
             # IF not empty -> check for duplicates
             # ELSE -> insert data right away
-            today = datetime.now().strftime('%Y-%m-%d')
-            query = {"scrape_date": {"$regex": f"^{today}"}}
+            today = datetime.now()
+            start_of_day = datetime(today.year, today.month, today.day)
+            end_of_day = start_of_day + timedelta(days=1)
+
+            query = {"scrape_date": {"$gte": start_of_day, "$lt": end_of_day}}
 
             if collection.count_documents(query) > 0:
                 duplicates = fetch_duplicate_titles(valid_data.model_dump(), today)
                 insert_data(valid_data.model_dump(), duplicates)
-                logger.info(f"Scraped data for {today}. {len(duplicates)} duplicates found.")
+                logger.info(f"Scraped data for {today.strftime('%Y-%m-%d')}. {len(duplicates)} duplicates found.")
             else:
                 insert_data(valid_data.model_dump())
-                logger.info(f"Scraped data for {today}")
+                logger.info(f"Scraped data for {today.strftime('%Y-%m-%d')}")
 
     except ValidationError as e:
         logger.error(f"[Pydantic] Invalid scraped data format: {e}")

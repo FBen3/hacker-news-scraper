@@ -4,10 +4,8 @@ from bs4 import BeautifulSoup
 import pytest
 import requests
 
-from scraper.scraper import (
-    WEBSITES,
-    fetch_website
-)
+from scraper.config import WEBSITES
+from scraper.scraper import fetch_website
 
 
 @patch('scraper.scraper.requests.get')

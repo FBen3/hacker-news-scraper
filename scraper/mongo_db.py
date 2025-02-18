@@ -13,7 +13,7 @@ from typing import List
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
-from pydantic import BaseModel, HttpUrl, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from config import (
     MONGO_ATLAS_URI,
@@ -43,27 +43,24 @@ class ScrapeResult(BaseModel):
 
 @contextmanager
 def connect_database():
-    """Create a context manager for database connections"""
+    """Create a database client, closing it upon exit.
+    Any DB errors are intended to bubble up by deafult.
+    """
+    client = None
     try:
         client = MongoClient(MONGO_ATLAS_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=5000)
         client.admin.command('ping')  # check if database is reachable
         yield client[DATABASE_NAME]
 
-    except Exception as e:
-        logger.error(f"[MongoDB] Failed to connect to database: {e}")
-        yield None  # returning None so callers can handle the failure (instead of program crashing)
-
     finally:
-        client.close()
+        if client is not None:
+            client.close()
 
 
 def fetch_saved_articles(date=None):
     """Get every saved article by default; filter by date if provided"""
     try:
         with connect_database() as db:
-            if db is None:
-                return json.dumps({"error": "Database connection failed"})
-
             collection = db[COLLECTION_NAME]
 
             pipeline = []  # initialize pipeline
@@ -90,9 +87,6 @@ def get_original_save_date(title):
     """Get the original scrape date of an article"""
     try:    
         with connect_database() as db:
-            if db is None:
-                return None
-
             collection = db[COLLECTION_NAME]
 
             original_document = collection.find_one(
@@ -131,9 +125,6 @@ def insert_data(data, duplicates=None):
 
     try:
         with connect_database() as db:    
-            if db is None:
-                return  # stop execution
-
             collection = db[COLLECTION_NAME]
 
             if duplicates:
@@ -163,9 +154,6 @@ def fetch_duplicate_titles(data, date):
 
     try:
         with connect_database() as db:
-            if db is None:
-                return set()
-
             collection = db[COLLECTION_NAME]
 
             start_of_day = datetime(date.year, date.month, date.day)
@@ -194,9 +182,6 @@ def save_scraped_data(data):
         logger.info("Scrape data validation successful.")
 
         with connect_database() as db:
-            if db is None:
-                return
-
             collection = db[COLLECTION_NAME]
 
             # check if database is empty for that day

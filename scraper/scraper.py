@@ -33,6 +33,11 @@ def fetch_website(url: str) -> BeautifulSoup:
         return None
 
 
+def extract_valid_timestamp(raw_value: str) -> str:
+    match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', raw_value)
+    return match.group() if match else None
+
+
 def add_meta_data(next_tr: BeautifulSoup) -> dict:
     """Extraction strategy.
 
@@ -54,7 +59,7 @@ def add_meta_data(next_tr: BeautifulSoup) -> dict:
 
     age_span = next_tr.find('span', class_="age")               # extract points from <span class="age">
     if age_span and ("title" in age_span.attrs):
-        meta_data["post_date"] = age_span["title"]
+        meta_data["post_date"] = extract_valid_timestamp(age_span["title"])
 
     comment_link = next_tr.find('a', string=lambda text: 'comment' in text.lower())         # extract number of comments from <a> tag
     if comment_link:

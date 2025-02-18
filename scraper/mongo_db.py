@@ -25,7 +25,6 @@ from config import (
 logger = logging.getLogger(__name__)
 
 
-# Article model
 class ArticleRecord(BaseModel):
     matched_keywords: List[str]
     title: str
@@ -35,7 +34,6 @@ class ArticleRecord(BaseModel):
     number_of_comments: int | None
 
 
-# Scrape Data model
 class ScrapeResult(BaseModel):
     scrape_date: datetime
     saves: List[ArticleRecord] = []

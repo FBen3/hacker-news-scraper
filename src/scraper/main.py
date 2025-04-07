@@ -1,9 +1,9 @@
 import logging
 import json
 
-from scraper import parse_pages
-from mongo_db import save_scraped_data
-from config import WEBSITES
+from src.scraper.scraper import parse_pages
+from src.scraper.mongo_db import save_scraped_data
+from src.scraper.config import WEBSITES
 
 
 logging.basicConfig(

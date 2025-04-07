@@ -13,7 +13,7 @@ import logging
 from bs4 import BeautifulSoup
 import requests
 
-from scraper.config import WEBSITES, KEYWORDS
+from config import WEBSITES, KEYWORDS
 
 
 logger = logging.getLogger(__name__)

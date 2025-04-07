@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 
-from scraper.scraper import parse_pages
-from scraper.mongo_db import save_scraped_data, fetch_saved_articles
+from src.scraper.scraper import parse_pages
+from src.scraper.mongo_db import save_scraped_data, fetch_saved_articles
 
 
 app = Flask(__name__)

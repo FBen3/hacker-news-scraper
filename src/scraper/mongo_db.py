@@ -15,7 +15,7 @@ from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
 from pydantic import BaseModel, ValidationError
 
-from scraper.config import (
+from config import (
     MONGO_ATLAS_URI,
     DATABASE_NAME,
     COLLECTION_NAME

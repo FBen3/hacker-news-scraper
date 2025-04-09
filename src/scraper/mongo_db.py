@@ -55,6 +55,26 @@ def connect_database():
             client.close()
 
 
+def fetch_keywords():
+    """Return a list of keywords the scraper checks.
+    """
+    try:
+        with connect_database() as db:
+            collection = db[COLLECTION_KEYWORDS]
+
+            keyword_doc = collection.find_one({}, {"_id": 0})
+
+            return keyword_doc["keywords"]
+
+    except PyMongoError as e:
+        logger.error(f"[MongoDB] Failed to fetch keywords: {e}")
+        return json.dumps({"error": "Database query failed for keywords"})
+
+
+def update_keywords():
+    pass
+
+
 def fetch_saved_articles(date=None):
     """Get every saved article by default; filter by date if provided"""
     try:

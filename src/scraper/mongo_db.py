@@ -72,8 +72,33 @@ def fetch_keywords():
         return json.dumps({"error": "Database query failed for keywords"})
 
 
-def update_keywords():
-    pass
+def update_keywords(new_keywords=None):
+    """Update keyword list, or set as empty list if None. 
+    """
+    try:
+        with connect_database() as db:
+            collection = db[COLLECTION_KEYWORDS]
+
+            if new_keywords:
+                collection.update_one(
+                    {}, 
+                    {"$addToSet": {"keywords": {"$each": new_keywords}}}
+                )
+                logger.info(f"Updated keywords; added: {new_keywords}")
+                return json.dumps({"message": "Keywords updated successfully"})
+            
+            else:
+                collection.update_one(
+                    {},
+                    {"$set": {"keywords": []}}
+                )
+                logger.info("Keywords reset to an empty list")
+                return json.dumps({"message": "Keywords cleared successfully"})
+
+    except PyMongoError as e:
+        logger.error(f"[MongDB] Failed to update keywords: {e}")
+        return json.dumps({"error": "Database update failed for keywords"})
+    
 
 
 def fetch_saved_articles(date=None):
@@ -234,7 +259,8 @@ def save_scraped_data(data):
 
 
 if __name__ == "__main__":
-    print(fetch_keywords())
+    # print(fetch_keywords())
+    update_keywords(["Benjamin", "Krisz"])
     # sample_data_1 = {}
     # save_scraped_data(sample_data_1)
     # save_scraped_data(sample_data_2)

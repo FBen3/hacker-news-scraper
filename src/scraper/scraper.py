@@ -5,13 +5,13 @@ webpages, parses the webpage, and checks
 for the presence of specied keywords.
 
 """
-from datetime import datetime
-import json
 import re
+import json
 import logging
+from datetime import datetime
 
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 
 from src.scraper.config import WEBSITES
 from src.scraper.mongo_db import fetch_keywords

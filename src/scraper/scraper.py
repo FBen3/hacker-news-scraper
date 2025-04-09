@@ -13,7 +13,8 @@ import logging
 from bs4 import BeautifulSoup
 import requests
 
-from src.scraper.config import WEBSITES, KEYWORDS
+from src.scraper.config import WEBSITES
+from src.scraper.mongo_db import fetch_keywords
 
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,8 @@ def check_titles(parsed_site: BeautifulSoup) -> list:
             post_id = page_title["id"]
 
             matched_keywords = []
-            for keyword in KEYWORDS:
+            keywords = fetch_keywords()
+            for keyword in keywords:
                 if re.search(rf'\b{re.escape(keyword)}\b', title_text, re.IGNORECASE):
                     matched_keywords.append(keyword)
 

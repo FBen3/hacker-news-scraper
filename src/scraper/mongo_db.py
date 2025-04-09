@@ -4,21 +4,22 @@ The database connection code and helper functions
 for intereacting with the database go in here. 
 
 """
+import json
+import logging
+from typing import List
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-import logging
-import json
-from typing import List
 
 from pymongo import MongoClient
-from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
+from pymongo.server_api import ServerApi
 from pydantic import BaseModel, ValidationError
 
 from src.scraper.config import (
     MONGO_ATLAS_URI,
     DATABASE_NAME,
-    COLLECTION_NAME
+    COLLECTION_SCRAPES,
+    COLLECTION_KEYWORDS
 )
 
 
@@ -76,10 +77,11 @@ def update_keywords():
 
 
 def fetch_saved_articles(date=None):
-    """Get every saved article by default; filter by date if provided"""
+    """Get every saved article by default; filter by date if provided.
+    """
     try:
         with connect_database() as db:
-            collection = db[COLLECTION_NAME]
+            collection = db[COLLECTION_SCRAPES]
 
             pipeline = []  # initialize pipeline
             if date:
@@ -98,14 +100,15 @@ def fetch_saved_articles(date=None):
         
     except PyMongoError as e:
         logger.error(f"[MongoDB] Failed to fetch saved articles: {e}")
-        return json.dumps({"error": "Database query failed for some reason!"})
+        return json.dumps({"error": "Database query failed for articles"})
 
 
 def get_original_save_date(title):
-    """Get the original scrape date of an article"""
+    """Get the original scrape date of an article.
+    """
     try:    
         with connect_database() as db:
-            collection = db[COLLECTION_NAME]
+            collection = db[COLLECTION_SCRAPES]
 
             original_document = collection.find_one(
                 {"saves.title": title},  # query
@@ -124,7 +127,8 @@ def get_original_save_date(title):
 
 
 def update_existing_article(article, title, original_date, update_date, collection):
-    """Helper function to update existing article metadata"""
+    """Helper function to update existing article metadata.
+    """
     collection.update_one(
         {"scrape_date": original_date, "saves.title": title},
         {
@@ -138,12 +142,13 @@ def update_existing_article(article, title, original_date, update_date, collecti
 
 
 def insert_data(data, duplicates=None):
-    """Insert new articles; update saved ones"""
+    """Insert new articles; update saved ones.
+    """
     update_date = datetime.now()
 
     try:
         with connect_database() as db:    
-            collection = db[COLLECTION_NAME]
+            collection = db[COLLECTION_SCRAPES]
 
             if duplicates:
                 de_dupped_articles = [
@@ -167,12 +172,13 @@ def insert_data(data, duplicates=None):
 
 
 def fetch_duplicate_titles(data, date):
-    """Return articles already in the database"""
+    """Return articles already in the database.
+    """
     current_titles = {article["title"] for article in data["saves"]}
 
     try:
         with connect_database() as db:
-            collection = db[COLLECTION_NAME]
+            collection = db[COLLECTION_SCRAPES]
 
             start_of_day = datetime(date.year, date.month, date.day)
             end_of_day = start_of_day + timedelta(days=1)
@@ -194,13 +200,14 @@ def fetch_duplicate_titles(data, date):
 
 
 def save_scraped_data(data):
-    """Save scraped data into collection after validation"""
+    """Save scraped data into collection after validation.
+    """
     try:
         valid_data = ScrapeResult.model_validate(data)
         logger.info("Scrape data validation successful.")
 
         with connect_database() as db:
-            collection = db[COLLECTION_NAME]
+            collection = db[COLLECTION_SCRAPES]
 
             # check if database is empty for that day
             # IF not empty -> check for duplicates
@@ -227,8 +234,9 @@ def save_scraped_data(data):
 
 
 if __name__ == "__main__":
-    sample_data_1 = {}
-    save_scraped_data(sample_data_1)
+    print(fetch_keywords())
+    # sample_data_1 = {}
+    # save_scraped_data(sample_data_1)
     # save_scraped_data(sample_data_2)
     # save_scraped_data(sample_data_3)
     # print(fetch_all_saved_articles())

@@ -257,9 +257,9 @@ def save_scraped_data(data):
 
 if __name__ == "__main__":
     # print(fetch_keywords())
-    update_keywords(["Benjamin", "Krisz"])
+    update_keywords(["Ben", "Fred"])
     # sample_data_1 = {}
     # save_scraped_data(sample_data_1)
-    # save_scraped_data(sample_data_2)
-    # save_scraped_data(sample_data_3)
     # print(fetch_all_saved_articles())
+
+

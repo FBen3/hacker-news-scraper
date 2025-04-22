@@ -64,12 +64,11 @@ def fetch_keywords():
             collection = db[COLLECTION_KEYWORDS]
 
             keyword_doc = collection.find_one({}, {"_id": 0})
-
             return keyword_doc["keywords"]
 
     except PyMongoError as e:
         logger.error(f"[MongoDB] Failed to fetch keywords: {e}")
-        return json.dumps({"error": "Database query failed for keywords"})
+        return None
 
 
 def update_keywords(new_keywords=None):
@@ -97,11 +96,10 @@ def update_keywords(new_keywords=None):
 
     except PyMongoError as e:
         logger.error(f"[MongDB] Failed to update keywords: {e}")
-        return json.dumps({"error": "Database update failed for keywords"})
-    
+        return None
 
 
-def fetch_saved_articles(date=None):
+def fetch_saved_articles(date: datetime = None):
     """Get every saved article by default; filter by date if provided.
     """
     try:
@@ -120,12 +118,11 @@ def fetch_saved_articles(date=None):
             pipeline.append({"$replaceRoot": {"newRoot": "$saves"}})  # project only article detials
 
             all_articles = list(collection.aggregate(pipeline))
-
-            return json.dumps(all_articles, indent=4)
+            return all_articles
         
     except PyMongoError as e:
         logger.error(f"[MongoDB] Failed to fetch saved articles: {e}")
-        return json.dumps({"error": "Database query failed for articles"})
+        return None
 
 
 def get_original_save_date(title):
@@ -196,7 +193,7 @@ def insert_data(data, duplicates=None):
         logger.error(f"[MongoDB] Failed to insert/update data: {e}")
 
 
-def fetch_duplicate_titles(data, date):
+def fetch_duplicate_titles(data, date: datetime):
     """Return articles already in the database.
     """
     current_titles = {article["title"] for article in data["saves"]}

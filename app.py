@@ -1,6 +1,8 @@
-from datetime import datetime
+import logging
+from datetime import datetime, date
 
 from flask import Flask, request, jsonify
+from flask.json.provider import DefaultJSONProvider
 
 from src.scraper.config import WEBSITES
 from src.scraper.scraper import parse_pages
@@ -12,7 +14,22 @@ from src.scraper.mongo_db import (
 )
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    force=True
+)
+
+
 app = Flask(__name__)
+
+class ISOJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
+app.json = ISOJSONProvider(app)
 
 
 @app.route("/")
@@ -26,7 +43,7 @@ def scrape_now():
     # number which defines how many pages of HN to scrape.
     data = parse_pages(WEBSITES)
     save_scraped_data(data)
-    return jsonify({"status": "success", "data_inserted": data})
+    return jsonify({"status": "success"})
 
 
 @app.route("/api/articles", methods=["GET"])
@@ -48,19 +65,21 @@ def get_saved_articles():
             raise e
 
     articles = fetch_saved_articles(date=datetime_arg)
-    return jsonify({"message": f"Currently saved articles: {articles}"})
+    return jsonify(articles)
 
 
 @app.route("/api/keywords", methods=["GET"])
 def get_keywords():
     keyword_list = fetch_keywords()
-    return jsonify({"message": f"Current keywords: {keyword_list}"})
+    return jsonify({"keywords": keyword_list})
 
 
 @app.route("/api/update_keywords", methods=["POST"])
-def update_keyword(keywords=None):
-    result = update_keywords(keywords)
-    return jsonify({"message": result})
+def update_saved_keywords():
+    body = request.get_json(silent=True) or {}
+    new_keywords = body.get("keywords")
+    update_keywords(new_keywords)
+    return jsonify({"status": "success"})
 
 
 if __name__ == "__main__":

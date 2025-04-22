@@ -6,7 +6,6 @@ for the presence of specied keywords.
 
 """
 import re
-import json
 import logging
 from datetime import datetime
 

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 # Database config
 MONGO_ATLAS_URI = os.getenv("MONGO_ATLAS_URI")
 LOCAL_MONGO_URI = os.getenv("LOCAL_MONGO_URI")

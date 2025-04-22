@@ -4,7 +4,6 @@ The database connection code and helper functions
 for intereacting with the database go in here. 
 
 """
-import json
 import logging
 from typing import List
 from contextlib import contextmanager
@@ -64,11 +63,15 @@ def fetch_keywords():
             collection = db[COLLECTION_KEYWORDS]
 
             keyword_doc = collection.find_one({}, {"_id": 0})
-            return keyword_doc["keywords"]
+            if keyword_doc and "keywords" in keyword_doc:
+                return keyword_doc["keywords"]
+            
+            logger.warning("[MongoDB] No keywords were found in collection.")
+            return []
 
     except PyMongoError as e:
         logger.error(f"[MongoDB] Failed to fetch keywords: {e}")
-        return None
+        return []
 
 
 def update_keywords(new_keywords=None):
@@ -84,7 +87,6 @@ def update_keywords(new_keywords=None):
                     {"$addToSet": {"keywords": {"$each": new_keywords}}}
                 )
                 logger.info(f"Updated keywords; added: {new_keywords}")
-                return json.dumps({"message": "Keywords updated successfully"})
             
             else:
                 collection.update_one(
@@ -92,11 +94,9 @@ def update_keywords(new_keywords=None):
                     {"$set": {"keywords": []}}
                 )
                 logger.info("Keywords reset to an empty list")
-                return json.dumps({"message": "Keywords cleared successfully"})
 
     except PyMongoError as e:
         logger.error(f"[MongDB] Failed to update keywords: {e}")
-        return None
 
 
 def fetch_saved_articles(date: datetime = None):

@@ -1,4 +1,3 @@
-import json
 import logging
 
 from src.scraper.config import WEBSITES

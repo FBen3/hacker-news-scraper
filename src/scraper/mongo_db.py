@@ -243,10 +243,10 @@ def save_scraped_data(data):
             if collection.count_documents(query) > 0:
                 duplicates = fetch_duplicate_titles(valid_data.model_dump(), today)
                 insert_data(valid_data.model_dump(), duplicates)
-                logger.info(f"Scraped data for {today.strftime('%Y-%m-%d')}. {len(duplicates)} duplicates found.")
+                logger.info(f"Scraped data at {today.strftime('%Y-%m-%d')}. {len(duplicates)} duplicates found.")
             else:
                 insert_data(valid_data.model_dump())
-                logger.info(f"Scraped data for {today.strftime('%Y-%m-%d')}")
+                logger.info(f"Scraped data at {today.strftime('%Y-%m-%d')}")
 
     except ValidationError as e:
         logger.error(f"[Pydantic] Invalid scraped data format: {e}")

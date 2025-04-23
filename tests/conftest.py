@@ -7,17 +7,17 @@ from app import app as flask_app
 
 @pytest.fixture(scope="session")
 def app():
-    """Flask app configured for testing.
+    """Flask app instance configured for testing.
     """
     flask_app.config.update(TESTING=True)  # disable error caching
     return flask_app
 
 
 @pytest.fixture()
-def client(test_app):
-    """Flask test client for making requests.
+def client(app):
+    """Flask test client for simulating requests.
     """
-    return test_app.test_client()
+    return app.test_client()
 
 
 @pytest.fixture(scope="session")

@@ -39,7 +39,7 @@ def home():
 
 @app.route("/api/scrape", methods=["POST"])
 def scrape_now():
-    # TODO: modify this function, and parse_pages to accept a 
+    # TODO: modify this function, and parse_pages(), to accept a 
     # number which defines how many pages of HN to scrape.
     data = parse_pages(WEBSITES)
     save_scraped_data(data)

@@ -12,7 +12,7 @@ logging.basicConfig(
 
 
 def main():
-    data = parse_pages(WEBSITES)
+    data = parse_pages(WEBSITES)  # one these (or smth else) is very slow
     save_scraped_data(data)
 
 

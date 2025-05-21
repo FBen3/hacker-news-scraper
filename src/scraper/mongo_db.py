@@ -75,7 +75,8 @@ def fetch_keywords():
 
 
 def update_keywords(new_keywords=None):
-    """Update keyword list, or set as empty list if None. 
+    """Add keywords to existing list, or set as empty 
+    list if None. 
     """
     try:
         with connect_database() as db:

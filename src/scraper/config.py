@@ -41,7 +41,7 @@ def get_ssm_parameter(parameter_name):
     
 
 # Detect local or AWS environment
-in_aws = os.environ.get('AWS_EXECUTION_ENV') is not None
+in_aws = os.environ.get("AWS_EXECUTION_ENV") is not None
 if in_aws:
     MONGO_ATLAS_URI = get_ssm_parameter("MONGO_ATLAS_URI")
     LOCAL_MONGO_URI = get_ssm_parameter("LOCAL_MONGO_URI")

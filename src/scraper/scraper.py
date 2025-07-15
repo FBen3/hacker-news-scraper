@@ -84,6 +84,7 @@ def check_titles(parsed_site: BeautifulSoup) -> list:
     page_titles = parsed_site.find_all('tr', class_="athing")
 
     for page_title in page_titles:
+        # TODO: can I use soup.select() to simplify logic ?
         title = page_title.find('span', class_="titleline").find('a')
         if title:
             title_text = title.get_text().strip()

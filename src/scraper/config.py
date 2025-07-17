@@ -30,7 +30,7 @@ def get_ssm_parameter(parameter_name):
         ssm_client = boto3.client("ssm")
         resp = ssm_client.get_parameter(
             Name=parameter_name,
-            WithDescription=True
+            WithDecryption=True
         )
 
         return resp["Parameter"]["Value"]
@@ -40,15 +40,26 @@ def get_ssm_parameter(parameter_name):
         return None
     
 
-# Detect local or AWS environment
-in_aws = os.environ.get("AWS_EXECUTION_ENV") is not None
-if in_aws:
-    MONGO_ATLAS_URI = get_ssm_parameter("MONGO_ATLAS_URI")
-    LOCAL_MONGO_URI = get_ssm_parameter("LOCAL_MONGO_URI")
+def get_config_value(ssm_param_name, env_var_name):
+    """Try SSM, fall back to environment variable.
+    """
+    value = get_ssm_parameter(ssm_param_name)
+    if value:
+        logger.info(f"Using {ssm_param_name} from SSM Parameter Store")
+        return value
+    
+    value = os.getenv(env_var_name)
+    if value:
+        logger.info(f"Using {env_var_name} from environment variable")
+        return value
+    
+    logger.warning(f"Could not find {ssm_param_name} in SSM or {env_var_name} in environment")
+    return None
 
-else:
-    MONGO_ATLAS_URI = os.getenv("MONGO_ATLAS_URI")
-    LOCAL_MONGO_URI = os.getenv("LOCAL_MONGO_URI")
+
+# Fetch configuration values
+MONGO_ATLAS_URI = get_config_value("MONGO_ATLAS_URI", "MONGO_ATLAS_URI")
+LOCAL_MONGO_URI = get_config_value("LOCAL_MONGO_URI", "LOCAL_MONGO_URI")
 
 
 # Database config

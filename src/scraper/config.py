@@ -40,20 +40,20 @@ def get_ssm_parameter(parameter_name):
         return None
     
 
-def get_config_value(ssm_param_name, env_var_name):
+def get_config_value(ssm_param, env_var):
     """Try SSM, fall back to environment variable.
     """
-    value = get_ssm_parameter(ssm_param_name)
+    value = get_ssm_parameter(ssm_param)
     if value:
-        logger.info(f"Using {ssm_param_name} from SSM Parameter Store")
+        logger.info(f"Using {ssm_param} from SSM Parameter Store")
         return value
     
-    value = os.getenv(env_var_name)
+    value = os.getenv(env_var)
     if value:
-        logger.info(f"Using {env_var_name} from environment variable")
+        logger.info(f"Using {env_var} from environment variable")
         return value
     
-    logger.warning(f"Could not find {ssm_param_name} in SSM or {env_var_name} in environment")
+    logger.warning(f"Could not find {ssm_param} in SSM or {env_var} in environment")
     return None
 
 
